@@ -19,5 +19,12 @@ This is a python script to simulate two volumes moving in space
 
 <img width="1906" height="965" alt="image" src="https://github.com/user-attachments/assets/4e4d0e79-1c9f-49e6-8060-09f592619250" />
 
+6.0 
+
+quite fond of this version. It removes the 4.0 engine reliance which was in 5.0
+
+<img width="1913" height="991" alt="image" src="https://github.com/user-attachments/assets/963f136b-0bca-4010-93fd-b34e5d70a8c0" />
+
+
 
 
