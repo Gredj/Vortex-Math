@@ -7,3 +7,8 @@ This is a python script to simulate two volumes moving in space
 
 <img width="544" height="421" alt="image" src="https://github.com/user-attachments/assets/91234538-813e-4c8f-a411-294d46ddfd33" />
 
+4.1
+
+<img width="1907" height="985" alt="image" src="https://github.com/user-attachments/assets/713a7f01-c8a5-4b2d-b9dd-6f7509ae047a" />
+
+
