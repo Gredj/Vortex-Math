@@ -25,6 +25,11 @@ quite fond of this version. It removes the 4.0 engine reliance which was in 5.0
 
 <img width="1913" height="991" alt="image" src="https://github.com/user-attachments/assets/963f136b-0bca-4010-93fd-b34e5d70a8c0" />
 
+7.0 
+
+we might be on this version for a while...
+
+<img width="1907" height="1011" alt="image" src="https://github.com/user-attachments/assets/7e2293e6-dea4-463a-8cf2-fde7df5dff6a" />
 
 
 
