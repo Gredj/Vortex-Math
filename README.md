@@ -47,6 +47,20 @@ The idea is one particle splits another and makes the second object into a torri
 
  A torrid splitting another torrid in half and then the two halfs then combine
 
+What's new: CollisionChoreographyEngine, a second FieldEngine you switch to from the same "Simulation Engine" dropdown you already had (pick "Collision Choreography," click "Activate engine"). It plays out:
+
+Approach — Particle A closes in on Object B.
+Impact — B is spun into Torus B and heads toward the larger, pre-existing Torus C.
+Second collision — Torus B reaches Torus C; C splits into fragments C1/C2 that continue on C's original heading, while Torus B passes through untouched.
+Tidal pull — C1/C2 feel a scripted 1/r²-shaped attraction that strengthens as they close in.
+Remerge — when they meet, the Environment tab's sliders decide the outcome: if magnetic pressure (B²/2μ₀) clears a threshold, it's a genuine implosion (density flash, then collapse to a point); otherwise it's a soft merge. Default sliders give you the soft merge — raise the Magnetic slider to force a real one.
+Afterglow → done — the flash fades; "Restart choreography" (new button, Visuals tab) runs it again.
+
+ <img width="1790" height="971" alt="image" src="https://github.com/user-attachments/assets/4c2d19b1-c3f7-41cb-bf7e-e0412bb06efe" />
+
+2026.09.07 - :)
+
+
  
 
 
