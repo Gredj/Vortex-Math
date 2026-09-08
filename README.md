@@ -45,7 +45,7 @@ This here is an after image
 
 The idea is one particle splits another and makes the second object into a torrid. this torrid then collides with another torrid of a different diameter and splits that torrid. making two going the way of the 'larger' on and then the original smaller one that got spun by the first particle. The tidal forces on that second larger torrid that was split into two then remerges with exceptional force enough to create an implosion with the right enviroment
 
-<img width="1782" height="956" alt="image" src="https://github.com/user-attachments/assets/15d6902d-f527-4206-a2a7-14c6bfcc95c3" />
+
 
 
 
