@@ -31,5 +31,11 @@ we might be on this version for a while...
 
 <img width="1907" height="1011" alt="image" src="https://github.com/user-attachments/assets/7e2293e6-dea4-463a-8cf2-fde7df5dff6a" />
 
+for some code explantions
+
+ It's a self-contained Tkinter + Matplotlib app that visualizes toy vortex/field physics in 3D. A VortexEngine holds FlowObjects (sphere, torus, cylinder, disk, shell, sheet, filament, spheromak) that each generate an analytic density/velocity/magnetic field, plus an Environment (pressure, temperature, magnetic strength, gravity, viscosity, container) and a Spacetime config (time scale/warp/dilation, visual curvature). The GUI lets you drag sliders, apply presets ("Fusion Reactor," "Jet vs Sheet," etc.), animate, and export screenshots/CSVs/scene JSON.
+
+The part that matches your goal: there's already an extensibility layer built for exactly what you described — FieldEngine is a Protocol (duck-typed interface: step, fields, metrics), EngineRegistry lets you register and switch between multiple engines at runtime, OpenSourceEngineAdapter is a template for wrapping an external simulator, FieldRegistry/FieldDefinition let a new engine declare what fields it exposes, and PluginRegistry + VortexExtensionAPI let you bolt on analysis (like the built-in Diagnostics for vorticity/divergence) without touching the GUI. So the "universal simulator overhead" concept isn't aspirational here — the seams for swapping in a model-trained engine already exist; a new engine just has to implement .step()/.fields()/.metrics() and call register_engine().
+
 
 
