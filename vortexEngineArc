@@ -1,0 +1,284 @@
+
+
+
+import numpy as np
+import tkinter as tk
+from tkinter import ttk
+import matplotlib
+matplotlib.use("TkAgg")
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
+# =====================================================================
+# 1. ENGINE HOST LAYER ABSTRACTIONS
+# =====================================================================
+
+class FieldEngine:
+    """Base interface for all simulation engines (analytic, CFD, learned)."""
+    def step(self, dt: float):
+        raise NotImplementedError
+        
+    def get_fields(self) -> dict:
+        """Returns dict of 3D/2D NumPy arrays: density, velocity (u, v, w), magnetic (bx, by, bz)."""
+        raise NotImplementedError
+        
+    def get_metrics(self) -> dict:
+        """Returns scalar diagnostics like vorticity, kinetic energy, magnetic energy."""
+        raise NotImplementedError
+        
+    def set_parameter(self, name: str, value: float):
+        raise NotImplementedError
+
+class EngineRegistry:
+    """Manages available engine implementations and active runtime selection."""
+    _engines = {}
+    
+    @classmethod
+    def register(cls, name: str, engine_cls):
+        cls._engines[name] = engine_cls
+        
+    @classmethod
+    def get(cls, name: str, *args, **kwargs):
+        if name not in cls._engines:
+            raise KeyError(f"Engine '{name}' not found in registry.")
+        return cls._engines[name](*args, **kwargs)
+        
+    @classmethod
+    def list_engines(cls):
+        return list(cls._engines.keys())
+
+# =====================================================================
+# 2. VORTEX ENGINE (ANALYTIC CORE)
+# =====================================================================
+
+class VortexEngine(FieldEngine):
+    """Analytic field simulator supporting multiple vortex topologies."""
+    def __init__(self, resolution=32):
+        self.res = resolution
+        self.topology = "Toroid"
+        self.time = 0.0
+        self.circulation = 5.0
+        self.core_radius = 0.3
+        
+        # Grid coordinates setup
+        lin = np.linspace(-1.0, 1.0, self.res)
+        self.X, self.Y, self.Z = np.meshgrid(lin, lin, lin, indexing='ij')
+        
+        self.density = np.zeros_like(self.X)
+        self.u = np.zeros_like(self.X)
+        self.v = np.zeros_like(self.X)
+        self.w = np.zeros_like(self.X)
+        self.bx = np.zeros_like(self.X)
+        self.by = np.zeros_like(self.X)
+        self.bz = np.zeros_like(self.X)
+        
+        self.update_fields()
+
+    def set_topology(self, topology: str):
+        self.topology = topology
+        self.update_fields()
+
+    def set_parameter(self, name: str, value: float):
+        if name == "circulation":
+            self.circulation = value
+        elif name == "core_radius":
+            self.core_radius = max(0.05, value)
+        self.update_fields()
+
+    def step(self, dt: float):
+        self.time += dt
+        # Rotate fields slightly over time to show animation capability
+        theta = dt * 0.5
+        cos_t, sin_t = np.cos(theta), np.sin(theta)
+        
+        # Simple coordinate rotation simulation
+        x_new = self.X * cos_t - self.Y * sin_t
+        y_new = self.X * sin_t + self.Y * cos_t
+        self.X, self.Y = x_new, y_new
+        self.update_fields()
+
+    def update_fields(self):
+        Rxy = np.sqrt(self.X**2 + self.Y**2)
+        R = np.sqrt(self.X**2 + self.Y**2 + self.Z**2)
+        
+        if self.topology == "Toroid":
+            # Toroidal vortex model
+            r_tor = np.sqrt((Rxy - 0.5)**2 + self.Z**2)
+            self.density = np.exp(-(r_tor/self.core_radius)**2)
+            self.u = -self.Y * self.circulation / (Rxy + 1e-5) * np.exp(-(r_tor/self.core_radius)**2)
+            self.v = self.X * self.circulation / (Rxy + 1e-5) * np.exp(-(r_tor/self.core_radius)**2)
+            self.w = np.zeros_like(self.X)
+        elif self.topology == "Sphere":
+            r_sph = R
+            self.density = np.exp(-(r_sph / self.core_radius)**2)
+            self.u = -self.Y * self.circulation * np.exp(-(r_sph / self.core_radius)**2)
+            self.v = self.X * self.circulation * np.exp(-(r_sph / self.core_radius)**2)
+            self.w = np.zeros_like(self.X)
+        else:
+            # Generic default cylinder/filament
+            r_cyl = Rxy
+            self.density = np.exp(-(r_cyl / self.core_radius)**2)
+            self.u = -self.Y * self.circulation / (r_cyl + 1e-5)
+            self.v = self.X * self.circulation / (r_cyl + 1e-5)
+            self.w = np.zeros_like(self.X)
+
+        # Magnetic fields proportional to velocity for demonstration
+        self.bx = 0.5 * self.u
+        self.by = 0.5 * self.v
+        self.bz = 0.5 * self.w
+
+    def get_fields(self) -> dict:
+        return {
+            "density": self.density,
+            "velocity": (self.u, self.v, self.w),
+            "magnetic": (self.bx, self.by, self.bz)
+        }
+
+    def get_metrics(self) -> dict:
+        u, v, w = self.u, self.v, self.w
+        ke = 0.5 * np.mean(u**2 + v**2 + w**2)
+        vorticity_mag = np.mean(np.sqrt(u**2 + v**2 + w**2))
+        return {
+            "Kinetic Energy": ke,
+            "Mean Vorticity": vorticity_mag,
+            "Time": self.time
+        }
+
+# Register native adapter
+class NativeVortexEngineAdapter(FieldEngine):
+    def __init__(self, resolution=32):
+        self.engine = VortexEngine(resolution=resolution)
+        
+    def step(self, dt: float):
+        self.engine.step(dt)
+        
+    def get_fields(self) -> dict:
+        return self.engine.get_fields()
+        
+    def get_metrics(self) -> dict:
+        return self.engine.get_metrics()
+        
+    def set_parameter(self, name: str, value: float):
+        self.engine.set_parameter(name, value)
+        
+    def set_topology(self, top: str):
+        self.engine.set_topology(top)
+
+EngineRegistry.register("NativeVortex", NativeVortexEngineAdapter)
+
+# =====================================================================
+# 3. TKINTER & MATPLOTLIB GUI APPLICATION
+# =====================================================================
+
+class VortexGUI:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("VortexEngine Field Simulator & Host Harness")
+        self.root.geometry("1000x700")
+        
+        # Initialize active engine
+        self.engine = EngineRegistry.get("NativeVortex", resolution=24)
+        self.is_animating = False
+        
+        self.setup_ui()
+        self.update_plot()
+
+    def setup_ui(self):
+        # Main layout panels
+        control_frame = ttk.LabelFrame(self.root, text="Control & Parameters", padding=10)
+        control_frame.pack(side=tk.LEFT, fill=tk.Y, padx=10, pady=10)
+        
+        plot_frame = ttk.Frame(self.root)
+        plot_frame.pack(side=tk.RIGHT, expand=True, fill=tk.BOTH, padx=10, pady=10)
+        
+        # Topology selection
+        ttk.Label(control_frame, text="Vortex Topology:").pack(anchor=tk.W, pady=5)
+        self.topo_var = tk.StringVar(value="Toroid")
+        topo_combo = ttk.Combobox(control_frame, textvariable=self.topo_var, values=["Toroid", "Sphere", "Cylinder"])
+        topo_combo.pack(fill=tk.X, pady=5)
+        topo_combo.bind("<<ComboboxSelected>>", self.on_topology_changed)
+        
+        # Sliders for parameters
+        ttk.Label(control_frame, text="Circulation Strength:").pack(anchor=tk.W, pady=5)
+        self.circ_slider = ttk.Scale(control_frame, from_=1.0, to=20.0, value=5.0, command=self.on_param_changed)
+        self.circ_slider.pack(fill=tk.X, pady=5)
+        
+        ttk.Label(control_frame, text="Core Radius:").pack(anchor=tk.W, pady=5)
+        self.radius_slider = ttk.Scale(control_frame, from_=0.1, to=1.0, value=0.3, command=self.on_param_changed)
+        self.radius_slider.pack(fill=tk.X, pady=5)
+        
+        # Animation Controls
+        self.anim_btn = ttk.Button(control_frame, text="Start Animation", command=self.toggle_animation)
+        self.anim_btn.pack(fill=tk.X, pady=15)
+        
+        # Metrics Display Box
+        ttk.Label(control_frame, text="Real-time Diagnostics:").pack(anchor=tk.W, pady=5)
+        self.metrics_text = tk.Text(control_frame, height=8, width=30, state=tk.DISABLED)
+        self.metrics_text.pack(fill=tk.X, pady=5)
+        
+        # Matplotlib 3D Figure setup
+        self.fig = plt.Figure(figsize=(6, 6), dpi=100)
+        self.ax = self.fig.add_subplot(111, projection='3d')
+        self.canvas = FigureCanvasTkAgg(self.fig, master=plot_frame)
+        self.canvas.get_tk_widget().pack(expand=True, fill=tk.BOTH)
+
+    def on_topology_changed(self, event):
+        topo = self.topo_var.get()
+        self.engine.set_topology(topo)
+        self.update_plot()
+
+    def on_param_changed(self, val):
+        self.engine.set_parameter("circulation", self.circ_slider.get())
+        self.engine.set_parameter("core_radius", self.radius_slider.get())
+        self.update_plot()
+
+    def toggle_animation(self):
+        self.is_animating = not self.is_animating
+        if self.is_animating:
+            self.anim_btn.config(text="Stop Animation")
+            self.animate_loop()
+        else:
+            self.anim_btn.config(text="Start Animation")
+
+    def animate_loop(self):
+        if self.is_animating:
+            self.engine.step(0.05)
+            self.update_plot()
+            self.root.after(30, self.animate_loop)
+
+    def update_plot(self):
+        fields = self.engine.get_fields()
+        density = fields["density"]
+        
+        # Downsample coordinates for scatter plot visualization
+        X = self.engine.engine.X
+        Y = self.engine.engine.Y
+        Z = self.engine.engine.Z
+        
+        # Threshold density for rendering points
+        threshold = 0.2
+        mask = density > threshold
+        
+        self.ax.clear()
+        self.ax.set_title(f"Topology: {self.topo_var.get()}")
+        
+        if np.any(mask):
+            self.ax.scatter(X[mask], Y[mask], Z[mask], c=density[mask], cmap='plasma', s=20, alpha=0.6)
+            
+        self.ax.set_xlim([-1, 1])
+        self.ax.set_ylim([-1, 1])
+        self.ax.set_zlim([-1, 1])
+        self.canvas.draw()
+        
+        # Update metrics box
+        metrics = self.engine.get_metrics()
+        self.metrics_text.config(state=tk.NORMAL)
+        self.metrics_text.delete("1.0", tk.END)
+        for k, v in metrics.items():
+            self.metrics_text.insert(tk.END, f"{k}: {v:.4f}\n")
+        self.metrics_text.config(state=tk.DISABLED)
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = VortexGUI(root)
+    root.mainloop()
